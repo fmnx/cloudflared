@@ -652,7 +652,7 @@ func (e *EdgeTunnelServer) serveQUIC(
 	errGroup.Go(func() error {
 		err := tunnelConn.Serve(serveCtx)
 		if err != nil {
-			connLogger.ConnAwareLogger().Err(err).Msg("Failed to serve tunnel connection")
+			//connLogger.ConnAwareLogger().Err(err).Msg("Failed to serve tunnel connection")
 		}
 		return err
 	})

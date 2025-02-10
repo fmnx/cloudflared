@@ -105,7 +105,13 @@ func (o *tcpOverWSService) EstablishConnection(ctx context.Context, dest string,
 		dest = o.dest
 	}
 
-	conn, err := o.dialer.DialContext(ctx, "tcp", dest)
+	// Since the web console does not support setting the UDP protocol, RDP is temporarily used instead of UDP.
+	network := "tcp"
+	if o.scheme == "rdp" {
+		network = "udp"
+	}
+
+	conn, err := o.dialer.DialContext(ctx, network, dest)
 	if err != nil {
 		return nil, err
 	}

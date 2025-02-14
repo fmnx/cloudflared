@@ -18,7 +18,7 @@ type HTTPOriginProxy interface {
 
 // StreamBasedOriginProxy can be implemented by origin services that want to proxy ws/TCP.
 type StreamBasedOriginProxy interface {
-	EstablishConnection(ctx context.Context, dest string, log *zerolog.Logger) (OriginConnection, error)
+	EstablishConnection(ctx context.Context, network, dest string, log *zerolog.Logger) (OriginConnection, error)
 }
 
 // HTTPLocalProxy can be implemented by cloudflared services that want to handle incoming http requests.
@@ -85,7 +85,7 @@ func (o *statusCode) RoundTrip(_ *http.Request) (*http.Response, error) {
 	return resp, nil
 }
 
-func (o *rawTCPService) EstablishConnection(ctx context.Context, dest string, logger *zerolog.Logger) (OriginConnection, error) {
+func (o *rawTCPService) EstablishConnection(ctx context.Context, _, dest string, logger *zerolog.Logger) (OriginConnection, error) {
 	conn, err := o.dialer.DialContext(ctx, "tcp", dest)
 	if err != nil {
 		return nil, err
@@ -99,16 +99,17 @@ func (o *rawTCPService) EstablishConnection(ctx context.Context, dest string, lo
 	return originConn, nil
 }
 
-func (o *tcpOverWSService) EstablishConnection(ctx context.Context, dest string, _ *zerolog.Logger) (OriginConnection, error) {
-	var err error
-	if !o.isBastion {
-		dest = o.dest
-	}
-
-	// Since the web console does not support setting the UDP protocol, RDP is temporarily used instead of UDP.
-	network := "tcp"
-	if o.scheme == "rdp" {
-		network = "udp"
+func (o *tcpOverWSService) EstablishConnection(ctx context.Context, network, dest string, _ *zerolog.Logger) (OriginConnection, error) {
+	if network == "" {
+		if !o.isBastion {
+			dest = o.dest
+		}
+		switch o.scheme {
+		case "rdp":
+			network = "udp"
+		default:
+			network = "tcp"
+		}
 	}
 
 	conn, err := o.dialer.DialContext(ctx, network, dest)

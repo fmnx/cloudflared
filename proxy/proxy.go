@@ -120,17 +120,24 @@ func (p *Proxy) ProxyHTTP(
 		}
 		return nil
 	case ingress.StreamBasedOriginProxy:
-		dest, err := getDestFromRule(rule, req)
-		if err != nil {
-			return err
+		var err error
+		dest := req.Header.Get("Forward-Dest")
+		network := req.Header.Get("Forward-Proto")
+
+		if dest == "" {
+			dest, err = getDestFromRule(rule, req)
+			if err != nil {
+				return err
+			}
 		}
+
 		flusher, ok := w.(http.Flusher)
 		if !ok {
 			return fmt.Errorf("response writer is not a flusher")
 		}
 		rws := connection.NewHTTPResponseReadWriterAcker(w, flusher, req)
 		logger := logger.With().Str(logFieldDestAddr, dest).Logger()
-		if err := p.proxyStream(tr.ToTracedContext(), rws, dest, originProxy, &logger); err != nil {
+		if err := p.proxyStream(tr.ToTracedContext(), rws, network, dest, originProxy, &logger); err != nil {
 			logRequestError(&logger, err)
 			return err
 		}
@@ -173,7 +180,7 @@ func (p *Proxy) ProxyTCP(
 	tracedCtx := tracing.NewTracedContext(serveCtx, req.CfTraceID, &logger)
 	logger.Debug().Msg("tcp proxy stream started")
 
-	if err := p.proxyStream(tracedCtx, rwa, req.Dest, p.warpRouting.Proxy, &logger); err != nil {
+	if err := p.proxyStream(tracedCtx, rwa, "tcp", req.Dest, p.warpRouting.Proxy, &logger); err != nil {
 		logRequestError(&logger, err)
 		return err
 	}
@@ -278,6 +285,7 @@ func (p *Proxy) proxyHTTPRequest(
 func (p *Proxy) proxyStream(
 	tr *tracing.TracedContext,
 	rwa connection.ReadWriteAcker,
+	network string,
 	dest string,
 	connectionProxy ingress.StreamBasedOriginProxy,
 	logger *zerolog.Logger,
@@ -286,7 +294,7 @@ func (p *Proxy) proxyStream(
 	_, connectSpan := tr.Tracer().Start(ctx, "stream-connect")
 
 	start := time.Now()
-	originConn, err := connectionProxy.EstablishConnection(ctx, dest, logger)
+	originConn, err := connectionProxy.EstablishConnection(ctx, network, dest, logger)
 	if err != nil {
 		connectStreamErrors.Inc()
 		tracing.EndWithErrorStatus(connectSpan, err)

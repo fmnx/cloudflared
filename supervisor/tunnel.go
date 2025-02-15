@@ -562,9 +562,9 @@ func (e *EdgeTunnelServer) serveQUIC(
 	//	return err, true
 	//}
 
-	//connLogger.Logger().Info().Msgf("Using %v as curve preferences", nil)
+	//connLogger.Logger().Info().Msgf("Using %v as curve preferences", curvePref)
 
-	//tlsConfig.CurvePreferences = nil
+	//tlsConfig.CurvePreferences = curvePref
 	tlsConfig.CurvePreferences = []tls.CurveID{tls.CurveP256}
 
 	// quic-go 0.44 increases the initial packet size to 1280 by default. That breaks anyone running tunnel through WARP

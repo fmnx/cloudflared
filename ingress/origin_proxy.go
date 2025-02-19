@@ -3,12 +3,43 @@ package ingress
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
+	"github.com/rs/zerolog"
 	"net"
 	"net/http"
-
-	"github.com/rs/zerolog"
 )
+
+var Warp = &CloudflareWarp{DialContext: func(ctx context.Context, network string, address string) (net.Conn, error) {
+	return nil, errors.New("DialContext has not been set")
+}}
+
+type DialContext func(ctx context.Context, network string, address string) (net.Conn, error)
+
+type CloudflareWarp struct {
+	DialContext DialContext
+	Proxy4      bool
+	Proxy6      bool
+}
+
+func (cw *CloudflareWarp) Set(dialContext DialContext, proxy4, proxy6 bool) {
+	cw.DialContext = dialContext
+	cw.Proxy4 = proxy4
+	cw.Proxy6 = proxy6
+}
+
+func (cw *CloudflareWarp) getDialContext(dialContext DialContext, dest string) DialContext {
+	if dest[0] != '[' {
+		if Warp.Proxy4 {
+			return cw.DialContext
+		}
+	} else {
+		if Warp.Proxy6 {
+			return cw.DialContext
+		}
+	}
+	return dialContext
+}
 
 // HTTPOriginProxy can be implemented by origin services that want to proxy http requests.
 type HTTPOriginProxy interface {
@@ -112,7 +143,8 @@ func (o *tcpOverWSService) EstablishConnection(ctx context.Context, network, des
 		}
 	}
 
-	conn, err := o.dialer.DialContext(ctx, network, dest)
+	dialContext := Warp.getDialContext(o.dialer.DialContext, dest)
+	conn, err := dialContext(ctx, network, dest)
 	if err != nil {
 		return nil, err
 	}

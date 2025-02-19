@@ -477,11 +477,13 @@ func StartServer(
 		logger.ManagementLogger,
 	)
 	internalRules := []ingress.Rule{ingress.NewManagementRule(mgmt)}
+
 	orchestrator, err := orchestration.NewOrchestrator(ctx, orchestratorConfig, tunnelConfig.Tags, internalRules, tunnelConfig.Log)
 	if err != nil {
 		return err
 	}
 
+	println(orchestrator.GetOriginProxy())
 	metricsListener, err := metrics.CreateMetricsListener(&listeners, c.String("metrics"))
 	if err != nil {
 		log.Err(err).Msg("Error opening metrics server listener")

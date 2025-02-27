@@ -3,16 +3,13 @@ package ingress
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"github.com/rs/zerolog"
 	"net"
 	"net/http"
 )
 
-var Warp = &CloudflareWarp{DialContext: func(ctx context.Context, network string, address string) (net.Conn, error) {
-	return nil, errors.New("DialContext has not been set")
-}}
+var Warp = &CloudflareWarp{}
 
 type DialContext func(ctx context.Context, network string, address string) (net.Conn, error)
 

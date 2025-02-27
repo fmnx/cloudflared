@@ -29,14 +29,8 @@ func (cw *CloudflareWarp) Set(dialContext DialContext, proxy4, proxy6 bool) {
 }
 
 func (cw *CloudflareWarp) getDialContext(dialContext DialContext, dest string) DialContext {
-	if dest[0] != '[' {
-		if Warp.Proxy4 {
-			return cw.DialContext
-		}
-	} else {
-		if Warp.Proxy6 {
-			return cw.DialContext
-		}
+	if isIPv6 := dest[0] == '['; (isIPv6 && Warp.Proxy6) || (!isIPv6 && Warp.Proxy4) {
+		return cw.DialContext
 	}
 	return dialContext
 }
